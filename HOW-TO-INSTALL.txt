@@ -1,0 +1,12 @@
+PROCESS OBSERVATION APP – SETUP (v0.3.0)
+
+1. Upload this whole folder to a static web host with HTTPS
+   (e.g. Netlify: sign in, then drag the folder onto "Deploy manually";
+   or GitHub Pages; or your own web server). Keep all files together.
+2. On the iPhone, open the link in Safari.
+3. Tap Share -> "Add to Home Screen". From now on, always start the app from that icon.
+4. Open it once while online. After that it works with no connection.
+
+Data stays on each device. Export (Data tab) after every shift.
+Updating the app later: change the files, raise VERSION in sw.js,
+re-upload. Phones pick up the new version on the next launch or the one after.

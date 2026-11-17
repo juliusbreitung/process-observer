@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f6f8">
+<title>Process Observation – Picking &amp; Packing</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Observe">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+:root{
+  --va:#1a7f37;--va-bg:#e6f4ea;--va-bd:#9ccfaa;--va-ink:#0d4a20;
+  --nn:#9a5b00;--nn-bg:#fff2d9;--nn-bd:#f0c97a;--nn-ink:#5c3700;
+  --w:#c0262d;--w-bg:#fdebec;--w-bd:#f1a9ac;--w-ink:#7a1218;
+  --ink:#1c2128;--muted:#5d6570;--line:#d8dce2;--bg:#f5f6f8;--card:#fff;--accent:#1f4fd1;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);
+  -webkit-tap-highlight-color:transparent;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+main{max-width:760px;margin:0 auto;padding:calc(10px + env(safe-area-inset-top)) 12px 20px}
+.tip{background:#e9effd;border:1px solid #c5d4fa;color:#1d3a8a;border-radius:12px;padding:10px 12px;font-size:14px;margin:8px 0}
+h1{font-size:22px;margin:8px 0 4px}
+h2{font-size:19px;margin:0 0 8px}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:18px 0 8px}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select,textarea{font:inherit;width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+textarea{resize:vertical}
+label{display:block;font-size:14px;color:var(--muted);margin:12px 0 0}
+label>input,label>select{margin-top:5px}
+.hint{color:var(--muted);font-size:14px;margin:4px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+.primary{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:14px 16px;font-weight:650}
+.secondary{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-weight:600}
+.danger{background:#fff;border:1.5px solid var(--w-bd);color:var(--w);border-radius:12px;padding:12px 14px;font-weight:600}
+.wide{width:100%;margin-top:14px}
+.ghost{background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px}
+.seg{display:flex;gap:6px;margin-top:6px}
+.seg button{flex:1;padding:12px 6px;border:1.5px solid var(--line);background:#fff;border-radius:10px;font-weight:600}
+.seg button.on{border-color:var(--accent);background:#e9effd;color:var(--accent)}
+.seg.procs{display:grid;grid-template-columns:repeat(2,1fr)}
+@media(min-width:560px){.seg.procs{grid-template-columns:repeat(3,1fr)}}
+
+/* tabs */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:#fff;border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);z-index:30}
+nav.tabs button{flex:1;border:0;background:none;padding:15px 0;font-size:15px;color:var(--muted)}
+nav.tabs button.on{color:var(--accent);font-weight:650;box-shadow:inset 0 3px 0 var(--accent)}
+.rec{color:var(--w)}
+
+/* observe */
+.sticky{position:sticky;top:0;z-index:20;background:var(--bg);padding:6px 0 8px;margin:0 -2px}
+.meta{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);padding:0 2px 6px}
+.meta b{color:var(--ink)}
+.sp{flex:1}
+.mono{font-variant-numeric:tabular-nums}
+.now{display:flex;align-items:center;gap:10px;border-radius:14px;padding:10px 12px;background:#fff;border:2px solid var(--line)}
+.now.VA{background:var(--va-bg);border-color:var(--va)}
+.now.NNVA{background:var(--nn-bg);border-color:var(--nn)}
+.now.W{background:var(--w-bg);border-color:var(--w)}
+.nowtxt{flex:1;min-width:0}
+.nowlbl{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.nowact{font-weight:700;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.big{font-variant-numeric:tabular-nums;font-size:30px;font-weight:750}
+.tools{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px}
+.tool{border:1px solid var(--line);background:#fff;border-radius:11px;padding:11px 4px;font-weight:650;font-size:14px}
+.tool.cyc{background:#1c2128;color:#fff;border-color:#1c2128}
+.badge{display:inline-block;min-width:22px;padding:1px 6px;border-radius:999px;background:rgba(255,255,255,.22);font-size:13px;margin-left:4px}
+.gh{display:flex;align-items:center;gap:6px}
+.gh:before{content:"";width:10px;height:10px;border-radius:3px;display:inline-block}
+.gh.VA:before{background:var(--va)}.gh.NNVA:before{background:var(--nn)}.gh.W:before{background:var(--w)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(min-width:560px){.grid{grid-template-columns:repeat(3,1fr)}}
+.act{min-height:62px;border-radius:12px;border:1.5px solid;text-align:left;padding:9px 11px;font-weight:620;font-size:15px;
+  display:flex;flex-direction:column;justify-content:center;gap:2px;transition:transform .06s}
+.act:active{transform:scale(.97)}
+.act small{font-weight:500;font-size:12px;opacity:.8}
+.act.VA{background:var(--va-bg);border-color:var(--va-bd);color:var(--va-ink)}
+.act.NNVA{background:var(--nn-bg);border-color:var(--nn-bd);color:var(--nn-ink)}
+.act.W{background:var(--w-bg);border-color:var(--w-bd);color:var(--w-ink)}
+.act.live.VA{background:var(--va);border-color:var(--va);color:#fff}
+.act.live.NNVA{background:var(--nn);border-color:var(--nn);color:#fff}
+.act.live.W{background:var(--w);border-color:var(--w);color:#fff}
+.act.add{background:#fff;border:1.5px dashed var(--line);color:var(--muted);width:100%;margin-top:10px;align-items:center}
+
+/* log */
+.log{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:8px;padding:9px 10px;border-top:1px solid #eef0f3;font-size:14px}
+.row:first-child{border-top:0}
+.row .t{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px;flex:none}
+.row .m{flex:1;min-width:0;overflow-wrap:anywhere}
+.row .d{font-variant-numeric:tabular-nums;color:var(--muted);flex:none}
+.x{border:0;background:none;color:var(--muted);font-size:20px;padding:0 4px;line-height:1}
+.chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px;margin-right:4px;vertical-align:1px}
+.chip.VA{background:var(--va-bg);color:var(--va)}.chip.NNVA{background:var(--nn-bg);color:var(--nn)}.chip.W{background:var(--w-bg);color:var(--w)}
+.chip.cyc{background:#1c2128;color:#fff}.chip.note{background:#e8ebf0;color:#3b4350}.chip.idea{background:#e9effd;color:var(--accent)}
+
+/* summary */
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(min-width:560px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 12px}
+.kpi .v{font-size:24px;font-weight:750;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:13px;color:var(--muted)}
+.stack{display:flex;height:26px;border-radius:8px;overflow:hidden;background:#e8ebf0;gap:2px}
+.stack div{height:100%}
+.bg-VA{background:var(--va)}.bg-NNVA{background:var(--nn)}.bg-W{background:var(--w)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:14px;margin-top:8px}
+.legend>span:before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;background:currentColor}
+.legend .VA{color:var(--va)}.legend .NNVA{color:var(--nn)}.legend .W{color:var(--w)}
+.legend b{color:var(--ink);font-weight:650}
+.bars .b{display:grid;grid-template-columns:120px 1fr 92px;align-items:center;gap:8px;font-size:14px;margin:6px 0}
+.bars .track{background:#eef0f3;border-radius:6px;height:14px;overflow:hidden}
+.bars .fill{height:100%;background:var(--w);border-radius:6px}
+.bars .r{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.cyc-chart{display:flex;align-items:flex-end;gap:3px;height:90px;padding:6px 2px 0;border-bottom:1px solid var(--line)}
+.cyc-chart div{flex:1;background:#4b5563;border-radius:3px 3px 0 0;min-width:3px;max-width:28px}
+table{width:100%;border-collapse:collapse;font-size:14px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{padding:8px 9px;text-align:left;border-top:1px solid #eef0f3}
+th{font-size:12px;color:var(--muted);font-weight:600;border-top:0;background:#fafbfc}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btnrow>*{flex:1 1 140px}
+.sess{display:flex;align-items:center;gap:8px}
+.sess .info{flex:1;min-width:0}
+.sess .info b{display:block}
+.small{font-size:13px;color:var(--muted)}
+.warn{background:var(--nn-bg);border:1px solid var(--nn-bd);color:var(--nn-ink);border-radius:12px;padding:10px 12px;font-size:14px;margin:8px 0}
+.filebtn{position:relative;overflow:hidden;text-align:center}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+/* modal + toast */
+#modal{position:fixed;inset:0;background:rgba(15,20,30,.45);display:none;align-items:flex-end;justify-content:center;z-index:50}
+#modal.show{display:flex}
+.sheet{background:#fff;width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+@media(min-width:600px){#modal{align-items:center}.sheet{border-radius:18px}}
+.row2{display:flex;gap:8px;margin-top:14px}.row2 button{flex:1}
+.stepper{display:flex;gap:8px;margin-top:6px}
+.stepper button{width:56px;font-size:22px;border:1px solid var(--line);background:#fff;border-radius:10px}
+.stepper input{text-align:center;font-size:20px;font-weight:700}
+#toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translate(-50%,200%);opacity:0;background:#1c2128;color:#fff;padding:11px 14px;border-radius:12px;
+  font-size:14px;z-index:60;transition:transform .2s,opacity .2s;max-width:92vw;display:flex;gap:10px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+#toast.show{transform:translate(-50%,0);opacity:1}
+#toast button{background:#fff;color:#1c2128;border:0;border-radius:8px;padding:6px 10px;font-weight:650;font-size:13px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal"></div>
+<div id="toast"></div>
+<script>
+(function(){
+'use strict';
+
+/* ---------- configuration ---------- */
+var KEY = 'procobs.v1';
+var APP_VERSION = '0.3.0';
+var WASTE = ['Transport','Inventory','Motion','Waiting','Overproduction','Overprocessing','Defects','Skills'];
+var CLS = {
+  VA:   {name:'Value-adding', short:'VA'},
+  NNVA: {name:'Necessary, non-value-adding', short:'NNVA'},
+  W:    {name:'Waste', short:'Waste'}
+};
+var PROCS = ['goodsin','putaway','picking','linesupply','packing','shipping'];
+var CATALOG = {
+  goodsin: {label:'Goods Entry', acts:[
+    {id:'gi_unload',  label:'Unload goods', cls:'VA'},
+    {id:'gi_docs',    label:'Check delivery note', cls:'NNVA'},
+    {id:'gi_count',   label:'Count / check quantity', cls:'NNVA'},
+    {id:'gi_inspect', label:'Inspect quality / damage', cls:'NNVA'},
+    {id:'gi_book',    label:'Book receipt in system', cls:'NNVA'},
+    {id:'gi_label',   label:'Label goods', cls:'NNVA'},
+    {id:'gi_stage',   label:'Move to staging area', cls:'NNVA'},
+    {id:'gi_dispose', label:'Dispose packaging', cls:'NNVA'},
+    {id:'gi_waitdock',label:'Wait for truck / dock', cls:'W', waste:'Waiting'},
+    {id:'gi_search',  label:'Search documents / order', cls:'W', waste:'Motion'},
+    {id:'gi_diff',    label:'Clarify discrepancy', cls:'W', waste:'Defects'},
+    {id:'gi_waiteq',  label:'Wait for forklift / equipment', cls:'W', waste:'Waiting'},
+    {id:'gi_restack', label:'Repalletize / restack', cls:'W', waste:'Overprocessing'},
+    {id:'gi_sys',     label:'System / scanner problem', cls:'W', waste:'Waiting'},
+    {id:'gi_idle',    label:'Idle / no work', cls:'W', waste:'Waiting'}
+  ]},
+  putaway: {label:'Put Away', acts:[
+    {id:'pu_store',   label:'Store goods in location', cls:'VA'},
+    {id:'pu_task',    label:'Get put-away task', cls:'NNVA'},
+    {id:'pu_pickup',  label:'Pick up goods from staging', cls:'NNVA'},
+    {id:'pu_travel',  label:'Travel to location', cls:'NNVA'},
+    {id:'pu_scan',    label:'Scan / confirm location', cls:'NNVA'},
+    {id:'pu_return',  label:'Return to staging', cls:'NNVA'},
+    {id:'pu_search',  label:'Search free location', cls:'W', waste:'Motion'},
+    {id:'pu_blocked', label:'Location occupied / blocked', cls:'W', waste:'Inventory'},
+    {id:'pu_rearr',   label:'Rearrange location', cls:'W', waste:'Motion'},
+    {id:'pu_double',  label:'Double handling / interim storage', cls:'W', waste:'Transport'},
+    {id:'pu_wait',    label:'Wait for forklift / equipment', cls:'W', waste:'Waiting'},
+    {id:'pu_sys',     label:'System / scanner problem', cls:'W', waste:'Waiting'},
+    {id:'pu_ask',     label:'Clarify / ask colleague', cls:'W', waste:'Waiting'},
+    {id:'pu_idle',    label:'Idle / no work', cls:'W', waste:'Waiting'}
+  ]},
+  picking: {label:'Picking', acts:[
+    {id:'pi_pick',   label:'Pick item', cls:'VA'},
+    {id:'pi_order',  label:'Get order / pick list', cls:'NNVA'},
+    {id:'pi_prep',   label:'Prepare cart / tote', cls:'NNVA'},
+    {id:'pi_travel', label:'Travel to location', cls:'NNVA'},
+    {id:'pi_scan',   label:'Scan / confirm', cls:'NNVA'},
+    {id:'pi_drop',   label:'Drop off picked order', cls:'NNVA'},
+    {id:'pi_search', label:'Search item / location', cls:'W', waste:'Motion'},
+    {id:'pi_back',   label:'Backtrack / extra walking', cls:'W', waste:'Motion'},
+    {id:'pi_wait',   label:'Wait (equipment, replen.)', cls:'W', waste:'Waiting'},
+    {id:'pi_empty',  label:'Empty location / stock-out', cls:'W', waste:'Inventory'},
+    {id:'pi_sys',    label:'System / scanner problem', cls:'W', waste:'Waiting'},
+    {id:'pi_ask',    label:'Clarify / ask colleague', cls:'W', waste:'Waiting'},
+    {id:'pi_rework', label:'Correct mis-pick', cls:'W', waste:'Defects'},
+    {id:'pi_double', label:'Double handling', cls:'W', waste:'Transport'},
+    {id:'pi_idle',   label:'Idle / no work', cls:'W', waste:'Waiting'}
+  ]},
+  linesupply: {label:'Line Supply', acts:[
+    {id:'ls_deliver', label:'Deliver material to line', cls:'VA'},
+    {id:'ls_order',   label:'Get supply order / kanban', cls:'NNVA'},
+    {id:'ls_load',    label:'Pick / load material', cls:'NNVA'},
+    {id:'ls_travel',  label:'Travel to line', cls:'NNVA'},
+    {id:'ls_scan',    label:'Scan / confirm', cls:'NNVA'},
+    {id:'ls_empties', label:'Collect empties', cls:'NNVA'},
+    {id:'ls_search',  label:'Search material / location', cls:'W', waste:'Motion'},
+    {id:'ls_short',   label:'Material shortage', cls:'W', waste:'Inventory'},
+    {id:'ls_waitline',label:'Wait at line / for loading', cls:'W', waste:'Waiting'},
+    {id:'ls_wrong',   label:'Correct wrong / missing delivery', cls:'W', waste:'Defects'},
+    {id:'ls_excess',  label:'Remove excess stock from line', cls:'W', waste:'Overproduction'},
+    {id:'ls_emptyrun',label:'Empty run', cls:'W', waste:'Transport'},
+    {id:'ls_sys',     label:'System / scanner problem', cls:'W', waste:'Waiting'},
+    {id:'ls_idle',    label:'Idle / no work', cls:'W', waste:'Waiting'}
+  ]},
+  packing: {label:'Packing', acts:[
+    {id:'pa_pack',   label:'Pack items', cls:'VA'},
+    {id:'pa_seal',   label:'Close & seal box', cls:'VA'},
+    {id:'pa_get',    label:'Get order / tote', cls:'NNVA'},
+    {id:'pa_scan',   label:'Scan / verify items', cls:'NNVA'},
+    {id:'pa_box',    label:'Select & build box', cls:'NNVA'},
+    {id:'pa_fill',   label:'Add void fill', cls:'NNVA'},
+    {id:'pa_label',  label:'Print & apply label', cls:'NNVA'},
+    {id:'pa_docs',   label:'Add documents', cls:'NNVA'},
+    {id:'pa_out',    label:'Move to outbound', cls:'NNVA'},
+    {id:'pa_search', label:'Search item / material', cls:'W', waste:'Motion'},
+    {id:'pa_supply', label:'Walk to fetch supplies', cls:'W', waste:'Motion'},
+    {id:'pa_wait',   label:'Wait (order, printer, system)', cls:'W', waste:'Waiting'},
+    {id:'pa_ask',    label:'Clarify / ask colleague', cls:'W', waste:'Waiting'},
+    {id:'pa_repack', label:'Repack / rework', cls:'W', waste:'Defects'},
+    {id:'pa_over',   label:'Wrong / oversized box', cls:'W', waste:'Overprocessing'},
+    {id:'pa_idle',   label:'Idle / no work', cls:'W', waste:'Waiting'}
+  ]},
+  shipping: {label:'Shipping', acts:[
+    {id:'sh_load',     label:'Load truck', cls:'VA'},
+    {id:'sh_order',    label:'Get shipping order', cls:'NNVA'},
+    {id:'sh_consol',   label:'Consolidate shipment', cls:'NNVA'},
+    {id:'sh_wrap',     label:'Wrap / secure pallet', cls:'NNVA'},
+    {id:'sh_docs',     label:'Print / attach shipping docs', cls:'NNVA'},
+    {id:'sh_scan',     label:'Scan / verify shipment', cls:'NNVA'},
+    {id:'sh_dock',     label:'Move to dock', cls:'NNVA'},
+    {id:'sh_search',   label:'Search shipment / pallet', cls:'W', waste:'Motion'},
+    {id:'sh_waittruck',label:'Wait for truck', cls:'W', waste:'Waiting'},
+    {id:'sh_waitdocs', label:'Wait for documents / system', cls:'W', waste:'Waiting'},
+    {id:'sh_wrong',    label:'Correct wrong shipment', cls:'W', waste:'Defects'},
+    {id:'sh_restack',  label:'Reload / restack', cls:'W', waste:'Defects'},
+    {id:'sh_double',   label:'Double handling', cls:'W', waste:'Transport'},
+    {id:'sh_idle',     label:'Idle / no work', cls:'W', waste:'Waiting'}
+  ]}
+};
+
+/* ---------- storage ---------- */
+var storageOK = true;
+function blank(){ return {v:1, sessions:[], events:[], active:null, running:null, custom:{}, last:{}, lastExport:null}; }
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw){ var d = JSON.parse(raw); var b = blank(); for(var k in d) b[k]=d[k]; b.custom = b.custom||{}; b.events = (b.events||[]).filter(function(e){ return e.type!=='cycle'; }); b.sessions = (b.sessions||[]).filter(function(x){ return CATALOG[x.process]; }); return b; }
+  }catch(e){ storageOK = false; }
+  return blank();
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); storageOK = true; }
+  catch(e){ storageOK = false; }
+}
+var S = load();
+try{ localStorage.setItem(KEY+'.test','1'); localStorage.removeItem(KEY+'.test'); }catch(e){ storageOK = false; }
+
+/* ---------- ui state ---------- */
+var tab = 'observe';
+var setupProc = (S.last && CATALOG[S.last.process]) ? S.last.process : 'goodsin';
+var summaryScope = null;
+var openLogs = {};
+var modalCls = 'W';
+var pendingTs = null;
+
+/* ---------- helpers ---------- */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function h(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function pad(n){ return (n<10?'0':'')+n; }
+function fmt(sec){
+  if(sec==null||isNaN(sec)) return '–';
+  sec = Math.max(0, Math.round(sec));
+  var hh = Math.floor(sec/3600), mm = Math.floor(sec%3600/60), ss = sec%60;
+  return hh ? hh+':'+pad(mm)+':'+pad(ss) : mm+':'+pad(ss);
+}
+function clock(ts){ var d=new Date(ts); return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }
+function hm(ts){ var d=new Date(ts); return pad(d.getHours())+':'+pad(d.getMinutes()); }
+function dstr(ts){ var d=new Date(ts); return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear(); }
+function iso(ts){ if(!ts) return ''; var d=new Date(ts); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+clock(ts); }
+function sum(a){ return a.reduce(function(x,y){return x+y;},0); }
+function pct(a,b){ return b>0 ? Math.round(a/b*100) : 0; }
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+function sessionById(id){ return S.sessions.filter(function(s){return s.id===id;})[0]; }
+function activeSession(){ return S.active ? sessionById(S.active) : null; }
+function runningEvent(){ return S.running ? S.events.filter(function(e){return e.id===S.running;})[0] : null; }
+function actsFor(p){ return CATALOG[p].acts.concat(S.custom[p]||[]); }
+function eventsOf(sid){ return S.events.filter(function(e){return e.sid===sid;}); }
+function sessEnd(s){
+  if(s.end) return s.end;
+  if(s.id===S.active) return Date.now();
+  var ev = eventsOf(s.id), m = s.start;
+  ev.forEach(function(e){ m = Math.max(m, e.end||e.start); });
+  return m;
+}
+function sessLabel(s){
+  return CATALOG[s.process].label+(s.area?' · '+s.area:'')+' · '+dstr(s.start)+' '+hm(s.start)+(s.id===S.active?' (running)':'');
+}
+
+/* ---------- toast & modal ---------- */
+var toastTimer;
+function toast(html, ms){
+  var t = document.getElementById('toast');
+  t.innerHTML = html; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, ms||3200);
+}
+function openModal(html){
+  var m = document.getElementById('modal');
+  m.innerHTML = '<div class="sheet">'+html+'</div>';
+  m.classList.add('show');
+  var f = m.querySelector('textarea,input[type=text],input[type=number]');
+  if(f) setTimeout(function(){ try{ f.focus(); }catch(e){} }, 60);
+}
+function closeModal(){ var m=document.getElementById('modal'); m.classList.remove('show'); m.innerHTML=''; }
+
+/* ---------- screen wake lock ---------- */
+var wake = null;
+function requestWake(){
+  try{ if('wakeLock' in navigator && S.active && document.visibilityState==='visible'){
+    navigator.wakeLock.request('screen').then(function(w){ wake=w; }).catch(function(){});
+  }}catch(e){}
+}
+function releaseWake(){ try{ if(wake){ wake.release(); wake=null; } }catch(e){} }
+
+/* ---------- core actions ---------- */
+function closeRunning(t){
+  var e = runningEvent();
+  if(e && !e.end) e.end = t;
+  S.running = null;
+}
+function startActivity(a){
+  var t = Date.now();
+  closeRunning(t);
+  var ev = {id:uid(), sid:S.active, type:'activity', actId:a.id, label:a.label, cls:a.cls, waste:a.waste||'', start:t, end:null};
+  S.events.push(ev);
+  S.running = ev.id;
+  save(); render();
+  if(navigator.vibrate) try{ navigator.vibrate(15); }catch(e){}
+}
+function undo(){
+  var s = activeSession(); if(!s) return;
+  var ev = eventsOf(s.id); var last = ev[ev.length-1];
+  if(!last){ toast('Nothing to undo'); return; }
+  S.events = S.events.filter(function(e){ return e.id!==last.id; });
+  if(S.running===last.id){
+    S.running = null;
+    var rest = eventsOf(s.id).filter(function(e){ return e.type==='activity'; });
+    var p = rest[rest.length-1];
+    if(p && p.end===last.start){ p.end=null; S.running=p.id; }
+  }
+  save(); render();
+  toast('Undone: '+h(last.type==='activity' ? last.label : (last.type==='idea'?'idea':'note')));
+}
+
+/* ---------- CSV / JSON ---------- */
+function csvCell(v){
+  v = v==null ? '' : String(v);
+  if(/^[=+\-@\t\r]/.test(v)) v = "'"+v;           // prevent spreadsheet formula injection
+  if(/[";\n\r]/.test(v)) v = '"'+v.replace(/"/g,'""')+'"';
+  return v;
+}
+function buildCSV(sids){
+  var set = {}; sids.forEach(function(id){ set[id]=1; });
+  var head = ['session_id','date','process','area','observer','session_comment','event_type','activity','class','waste_type','start','end','duration_s','during_activity','text'];
+  var lines = [head.join(';')];
+  var now = Date.now();
+  S.sessions.filter(function(s){ return set[s.id]; }).forEach(function(s){
+    eventsOf(s.id).slice().sort(function(a,b){return a.start-b.start;}).forEach(function(e){
+      var dur = e.type==='activity' ? Math.round(((e.end||now)-e.start)/1000) : '';
+      lines.push([s.id, dstr(s.start), CATALOG[s.process].label, s.area, s.observer, s.comment,
+        e.type, e.type==='activity'?e.label:'', e.cls?CLS[e.cls].short:'', e.waste||'',
+        iso(e.start), e.type==='activity'?iso(e.end):'', dur, e.ctx||'', e.text||''
+      ].map(csvCell).join(';'));
+    });
+  });
+  return '﻿' + lines.join('\r\n');
+}
+var IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+var IS_MOBILE = IS_IOS || /Android/.test(navigator.userAgent);
+var IS_STANDALONE = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone===true;
+function download(name, content, mime){
+  // On phones/tablets use the share sheet (Save to Files, Mail, AirDrop, Teams …); otherwise a normal download.
+  try{
+    if(IS_MOBILE && typeof File==='function' && navigator.canShare){
+      var file = new File([content], name, {type:mime.split(';')[0]});
+      if(navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title:name}).catch(function(err){
+          if(!err || err.name!=='AbortError') plainDownload(name, content, mime);
+        });
+        return;
+      }
+    }
+  }catch(e){}
+  plainDownload(name, content, mime);
+}
+function plainDownload(name, content, mime){
+  var blob = new Blob([content], {type:mime});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1500);
+}
+function stamp(){ var d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes()); }
+function exportCSV(sids, label){
+  if(!sids.length){ toast('No sessions to export'); return; }
+  download('observations_'+(label||'all')+'_'+stamp()+'.csv', buildCSV(sids), 'text/csv;charset=utf-8');
+  S.lastExport = Date.now(); save(); render();
+}
+function exportJSON(){
+  var d = {app:'process-observation', v:1, exported:new Date().toISOString(), sessions:S.sessions, events:S.events, custom:S.custom};
+  download('observations_backup_'+stamp()+'.json', JSON.stringify(d), 'application/json');
+  S.lastExport = Date.now(); save(); render();
+}
+function importFile(f){
+  if(!f) return;
+  var r = new FileReader();
+  r.onload = function(){
+    try{
+      var d = JSON.parse(r.result);
+      if(!d || !Array.isArray(d.sessions) || !Array.isArray(d.events)) throw new Error('bad');
+      var sid={}, eid={}, ns=0, ne=0;
+      S.sessions.forEach(function(s){ sid[s.id]=1; }); S.events.forEach(function(e){ eid[e.id]=1; });
+      d.sessions.forEach(function(s){ if(s && s.id && CATALOG[s.process] && !sid[s.id]){ S.sessions.push(s); ns++; } });
+      d.events.forEach(function(e){ if(e && e.id && e.sid && e.type!=='cycle' && !eid[e.id]){ S.events.push(e); ne++; } });
+      if(d.custom){ PROCS.forEach(function(p){
+        S.custom[p] = S.custom[p]||[];
+        var have={}; S.custom[p].forEach(function(a){ have[a.id]=1; });
+        (d.custom[p]||[]).forEach(function(a){ if(a && a.id && !have[a.id]) S.custom[p].push(a); });
+      }); }
+      S.sessions.sort(function(a,b){ return a.start-b.start; });
+      save(); render();
+      toast('Merged '+ns+' session(s), '+ne+' event(s)');
+    }catch(e){ toast('That file is not a valid backup'); }
+  };
+  r.readAsText(f);
+}
+
+/* ---------- analysis ---------- */
+function analyze(sids){
+  var now = Date.now(), set = {};
+  sids.forEach(function(id){ set[id]=1; });
+  var ev = S.events.filter(function(e){ return set[e.sid]; });
+  var total=0, byCls={VA:0,NNVA:0,W:0}, byWaste={}, byAct={};
+  ev.forEach(function(e){
+    if(e.type!=='activity') return;
+    var d = Math.max(0, ((e.end||now)-e.start)/1000);
+    total += d; byCls[e.cls] = (byCls[e.cls]||0) + d;
+    if(e.cls==='W'){ var w=e.waste||'Unspecified'; byWaste[w]=(byWaste[w]||0)+d; }
+    var k = e.cls+'|'+e.label;
+    if(!byAct[k]) byAct[k] = {label:e.label, cls:e.cls, waste:e.waste, n:0, t:0};
+    byAct[k].n++; byAct[k].t += d;
+  });
+  return {
+    total: total, byCls: byCls,
+    waste: Object.keys(byWaste).map(function(k){ return {k:k, t:byWaste[k]}; }).sort(function(a,b){ return b.t-a.t; }),
+    acts: Object.keys(byAct).map(function(k){ return byAct[k]; }).sort(function(a,b){ return b.t-a.t; }),
+    notes: ev.filter(function(e){ return e.type==='note'; }),
+    ideas: ev.filter(function(e){ return e.type==='idea'; })
+  };
+}
+
+/* ---------- views ---------- */
+function rowHtml(e, del){
+  var main, dur='';
+  if(e.type==='activity'){
+    main = '<span class="chip '+e.cls+'">'+CLS[e.cls].short+'</span>'+h(e.label);
+    dur = e.end ? fmt((e.end-e.start)/1000) : 'running';
+  }else{
+    main = '<span class="chip '+e.type+'">'+(e.type==='idea'?'Idea':'Note')+'</span>'+h(e.text);
+  }
+  return '<div class="row"><span class="t">'+clock(e.start)+'</span><span class="m">'+main+'</span><span class="d">'+dur+'</span>'+
+    (del?'<button class="x" data-a="delev" data-v="'+e.id+'" aria-label="Delete entry">×</button>':'')+'</div>';
+}
+
+function viewSetup(){
+  var L = S.last || {};
+  return installTip()+'<h1>New observation</h1>'+
+  '<p class="hint">Data is stored only in this browser on this device. Don\'t record names.</p>'+
+  '<div class="card">'+
+    '<label>Process</label><div class="seg procs">'+
+      PROCS.map(function(p){ return '<button data-a="setproc" data-v="'+p+'" class="'+(setupProc===p?'on':'')+'">'+CATALOG[p].label+'</button>'; }).join('')+
+    '</div>'+
+    '<label>Area / zone<input type="text" id="f_area" placeholder="e.g. Hall 2, dock 3" value="'+h(L.area||'')+'"></label>'+
+    '<label>Observer initials<input type="text" id="f_obs" maxlength="6" value="'+h(L.observer||'')+'"></label>'+
+    '<label>Comment<textarea id="f_comment" rows="3" placeholder="e.g. Peak hour, 2 of 3 forklifts available"></textarea></label>'+
+    '<button class="primary wide" data-a="start">Start observation</button>'+
+  '</div>'+
+  '<p class="hint">How it works: tap the activity the person is doing <i>right now</i>. The previous one stops automatically. Use Pause when you stop watching.</p>';
+}
+
+function viewObserve(){
+  var s = activeSession(), cat = CATALOG[s.process], cur = runningEvent();
+  var ev = eventsOf(s.id);
+  var acts = actsFor(s.process);
+  function group(cls, title){
+    var list = acts.filter(function(a){ return a.cls===cls; });
+    if(!list.length) return '';
+    return '<h3 class="gh '+cls+'">'+title+'</h3><div class="grid">'+list.map(function(a){
+      return '<button class="act '+cls+(cur&&cur.actId===a.id?' live':'')+'" data-a="act" data-v="'+h(a.id)+'"><span>'+h(a.label)+'</span>'+(a.waste?'<small>'+h(a.waste)+'</small>':'')+'</button>';
+    }).join('')+'</div>';
+  }
+  var recent = ev.slice(-6).reverse().map(function(e){ return rowHtml(e,false); }).join('');
+  return '<div class="sticky">'+
+    '<div class="meta"><b>'+cat.label+'</b>'+(s.area?' · '+h(s.area):'')+'<span class="sp"></span>Session&nbsp;<span class="mono" data-t="1" data-from="'+s.start+'"></span></div>'+
+    '<div class="now '+(cur?cur.cls:'')+'">'+
+      '<div class="nowtxt"><div class="nowlbl">'+(cur?'Now':'Paused')+'</div><div class="nowact">'+(cur?h(cur.label):'Tap an activity to start')+'</div></div>'+
+      (cur?'<div class="big" data-t="1" data-from="'+cur.start+'"></div><button class="ghost" data-a="pause">Pause</button>':'')+
+    '</div>'+
+    '<div class="tools">'+
+      '<button class="tool" data-a="note" data-v="note">Note</button>'+
+      '<button class="tool" data-a="note" data-v="idea">Idea</button>'+
+      '<button class="tool" data-a="undo">Undo</button>'+
+    '</div>'+
+  '</div>'+
+  group('VA','Value-adding')+group('NNVA','Necessary, non-value-adding')+group('W','Waste')+
+  '<button class="act add" data-a="custom">+ Other activity</button>'+
+  '<h3>Recent</h3><div class="log">'+(recent||'<div class="row"><span class="m hint">Nothing logged yet.</span></div>')+'</div>'+
+  '<button class="danger wide" data-a="end">End session</button>';
+}
+
+function viewSummary(){
+  if(!S.sessions.length) return '<h1>Summary</h1><p class="hint">No observations yet. Start one in the Observe tab.</p>';
+  var opts = [];
+  PROCS.forEach(function(p){
+    var n = S.sessions.filter(function(s){ return s.process===p; }).length;
+    if(n) opts.push(['p:'+p, 'All '+CATALOG[p].label+' sessions ('+n+')']);
+  });
+  S.sessions.slice().reverse().forEach(function(s){ opts.push(['s:'+s.id, sessLabel(s)]); });
+  if(!summaryScope || !opts.some(function(o){ return o[0]===summaryScope; })){
+    summaryScope = opts.filter(function(o){ return o[0].indexOf('s:')===0; })[0][0];
+  }
+  var sids, proc;
+  if(summaryScope.indexOf('p:')===0){
+    proc = summaryScope.slice(2);
+    sids = S.sessions.filter(function(s){ return s.process===proc; }).map(function(s){ return s.id; });
+  }else{
+    sids = [summaryScope.slice(2)]; proc = sessionById(sids[0]).process;
+  }
+  var cat = CATALOG[proc], A = analyze(sids), T = A.total;
+  var html = '<h1>Summary</h1><select id="scope">'+opts.map(function(o){ return '<option value="'+h(o[0])+'"'+(o[0]===summaryScope?' selected':'')+'>'+h(o[1])+'</option>'; }).join('')+'</select>';
+  if(summaryScope.indexOf('s:')===0){
+    var ss = sessionById(sids[0]);
+    if(ss && (ss.observer || ss.comment)) html += '<p class="hint">'+(ss.observer?'Observer: '+h(ss.observer):'')+(ss.observer&&ss.comment?' · ':'')+(ss.comment?h(ss.comment):'')+'</p>';
+  }
+  if(!T){ return html+'<p class="hint">No activities recorded in this selection yet.</p>'; }
+
+  html += '<h3>Key figures</h3><div class="kpis">'+
+    kpi(fmt(T),'Observed time')+
+    kpi(pct(A.byCls.VA,T)+'%','Value-adding share')+
+    kpi(pct(A.byCls.NNVA,T)+'%','Non-value-adding share')+
+    kpi(pct(A.byCls.W,T)+'%','Waste share')+
+  '</div>';
+
+  html += '<h3>Time split</h3><div class="card"><div class="stack">'+
+    ['VA','NNVA','W'].map(function(c){ var p = T? A.byCls[c]/T*100 : 0; return p>0?'<div class="bg-'+c+'" style="width:'+p+'%" title="'+CLS[c].name+'"></div>':''; }).join('')+
+  '</div><div class="legend">'+
+    ['VA','NNVA','W'].map(function(c){ return '<span class="'+c+'"><b>'+CLS[c].short+' '+pct(A.byCls[c],T)+'%</b> <span class="small">('+fmt(A.byCls[c])+')</span></span>'; }).join('')+
+  '</div></div>';
+
+  if(A.waste.length){
+    var mx = A.waste[0].t;
+    html += '<h3>Waste by type</h3><div class="card bars">'+A.waste.map(function(w){
+      return '<div class="b"><span>'+h(w.k)+'</span><div class="track"><div class="fill" style="width:'+(w.t/mx*100)+'%"></div></div><span class="r">'+fmt(w.t)+' · '+pct(w.t,T)+'%</span></div>';
+    }).join('')+'</div>';
+  }
+
+  html += '<h3>Activities</h3><table><thead><tr><th>Activity</th><th class="n">#</th><th class="n">Total</th><th class="n">Avg</th><th class="n">%</th></tr></thead><tbody>'+
+    A.acts.map(function(a){ return '<tr><td><span class="chip '+a.cls+'">'+CLS[a.cls].short+'</span>'+h(a.label)+'</td><td class="n">'+a.n+'</td><td class="n">'+fmt(a.t)+'</td><td class="n">'+fmt(a.t/a.n)+'</td><td class="n">'+pct(a.t,T)+'</td></tr>'; }).join('')+
+  '</tbody></table>';
+
+  function list(items, title){
+    if(!items.length) return '';
+    return '<h3>'+title+' ('+items.length+')</h3><div class="log">'+items.map(function(e){
+      return '<div class="row"><span class="t">'+hm(e.start)+'</span><span class="m">'+h(e.text)+(e.ctx?'<div class="small">during: '+h(e.ctx)+'</div>':'')+'</span></div>';
+    }).join('')+'</div>';
+  }
+  html += list(A.ideas,'Kaizen ideas') + list(A.notes,'Notes');
+  html += '<button class="secondary wide" data-a="exportscope">Export this selection (CSV)</button>';
+  return html;
+}
+function installTip(){
+  if(IS_STANDALONE || location.protocol.indexOf('http')!==0) return '';
+  if(IS_IOS) return '<div class="tip"><b>Install for offline use:</b> tap Share → <b>Add to Home Screen</b>, then always open the app from that icon. This keeps your data safe from Safari\'s automatic clean-up.</div>';
+  if(/Android/.test(navigator.userAgent)) return '<div class="tip"><b>Install for offline use:</b> browser menu ⋮ → <b>Add to Home screen / Install app</b>, then open it from that icon.</div>';
+  return '';
+}
+function kpi(v,l){ return '<div class="kpi"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>'; }
+
+function viewData(){
+  var html = installTip()+'<h1>Data</h1>';
+  html += '<div class="card"><b>Stored on this device only</b><p class="hint">'+S.sessions.length+' session(s), '+S.events.length+' entries. '+
+    (S.lastExport?'Last export: '+dstr(S.lastExport)+' '+hm(S.lastExport)+'.':'<b style="color:var(--w)">Not exported yet.</b>')+
+    ' Clearing browser data deletes everything – export after each observation day.</p>'+
+    '<div class="btnrow">'+
+      '<button class="primary" data-a="exportall">Export all (CSV for Excel)</button>'+
+      '<button class="secondary" data-a="backup">Backup (JSON)</button>'+
+      '<label class="secondary filebtn" style="margin:0;color:var(--ink)">Import / merge backup<input type="file" id="importFile" accept=".json,application/json"></label>'+
+    '</div></div>';
+
+  html += '<h3>Sessions</h3>';
+  if(!S.sessions.length) html += '<p class="hint">No sessions yet.</p>';
+  S.sessions.slice().reverse().forEach(function(s){
+    var ev = eventsOf(s.id);
+    var na = ev.filter(function(e){return e.type==='activity';}).length, ni = ev.filter(function(e){return e.type==='idea';}).length;
+    html += '<div class="card"><div class="sess"><div class="info"><b>'+h(sessLabel(s))+'</b><span class="small">'+
+      (s.comment?h(s.comment)+'<br>':'')+
+      fmt((sessEnd(s)-s.start)/1000)+' · '+na+' activities · '+ni+' ideas'+(s.observer?' · obs. '+h(s.observer):'')+'</span></div></div>'+
+      '<div class="btnrow"><button class="secondary" data-a="gosum" data-v="'+s.id+'">Summary</button>'+
+      '<button class="secondary" data-a="log" data-v="'+s.id+'">'+(openLogs[s.id]?'Hide log':'Edit log')+'</button>'+
+      '<button class="danger" data-a="delsess" data-v="'+s.id+'">Delete</button></div>'+
+      (openLogs[s.id]?'<div class="log" style="margin-top:10px">'+(ev.slice().sort(function(a,b){return a.start-b.start;}).map(function(e){ return rowHtml(e,true); }).join('')||'<div class="row hint">Empty</div>')+'</div>':'')+
+    '</div>';
+  });
+
+  var customs = [];
+  PROCS.forEach(function(p){ (S.custom[p]||[]).forEach(function(a){ customs.push([p,a]); }); });
+  if(customs.length){
+    html += '<h3>Your custom activities</h3><div class="log">'+customs.map(function(x){
+      var a=x[1]; return '<div class="row"><span class="m"><span class="chip '+a.cls+'">'+CLS[a.cls].short+'</span>'+h(a.label)+(a.waste?' <span class="small">('+h(a.waste)+')</span>':'')+' <span class="small">· '+CATALOG[x[0]].label+'</span></span><button class="x" data-a="delcustom" data-v="'+x[0]+'|'+h(a.id)+'" aria-label="Remove">×</button></div>';
+    }).join('')+'</div>';
+  }
+
+  html += '<h3>Privacy</h3><p class="hint">Your observations are never sent anywhere – the app only fetches its own updates from where it is hosted. Don\'t record names of employees in comments or notes. Exported files are under your control.</p>';
+  html += '<button class="danger wide" data-a="wipe">Delete all data on this device</button>';
+  html += '<p class="small" style="text-align:center;margin-top:16px">Version '+APP_VERSION+(navigator.serviceWorker&&navigator.serviceWorker.controller?' · offline ready':'')+(IS_STANDALONE?' · installed':'')+'</p>';
+  return html;
+}
+
+function nav(){
+  var t = [['observe', S.active?'<span class="rec">●</span> Observe':'Observe'],['summary','Summary'],['data','Data']];
+  return '<nav class="tabs">'+t.map(function(x){ return '<button data-a="tab" data-v="'+x[0]+'" class="'+(tab===x[0]?'on':'')+'">'+x[1]+'</button>'; }).join('')+'</nav>';
+}
+
+function render(){
+  var body;
+  if(tab==='observe') body = S.active ? viewObserve() : viewSetup();
+  else if(tab==='summary') body = viewSummary();
+  else body = viewData();
+  var warn = storageOK ? '' : '<div class="warn">This browser is not letting the page save data (private mode or file restrictions). Entries will be lost when the page closes – export before closing.</div>';
+  document.getElementById('app').innerHTML = '<main>'+warn+body+'</main>'+nav();
+  tick();
+}
+function tick(){
+  var now = Date.now();
+  var els = document.querySelectorAll('[data-t]');
+  for(var i=0;i<els.length;i++){ els[i].textContent = fmt((now - (+els[i].getAttribute('data-from')))/1000); }
+}
+setInterval(tick, 1000);
+
+/* ---------- event handling ---------- */
+var A = {
+  tab: function(v){ tab=v; render(); window.scrollTo(0,0); },
+  setproc: function(v){ setupProc=v; render(); },
+  start: function(){
+    function val(id){ var el=document.getElementById(id); return el ? el.value.trim() : ''; }
+    var s = {id:uid(), process:setupProc, area:val('f_area'), observer:val('f_obs'), comment:val('f_comment'), start:Date.now(), end:null};
+    S.last = {process:s.process, area:s.area, observer:s.observer};
+    S.sessions.push(s); S.active = s.id; S.running = null;
+    save(); requestWake(); render(); window.scrollTo(0,0);
+  },
+  act: function(v){
+    var s = activeSession(); if(!s) return;
+    var a = actsFor(s.process).filter(function(x){ return x.id===v; })[0];
+    if(a) startActivity(a);
+  },
+  pause: function(){ closeRunning(Date.now()); save(); render(); },
+  undo: undo,
+  note: function(kind){
+    var cur = runningEvent(); pendingTs = Date.now();
+    openModal('<h2>'+(kind==='idea'?'Kaizen idea':'Note')+'</h2>'+
+      '<p class="hint">'+(cur?'During: <b>'+h(cur.label)+'</b> · ':'')+'Timestamp '+clock(pendingTs)+'. Tip: use the keyboard mic to dictate. No names.</p>'+
+      '<textarea id="m_text" rows="4" placeholder="'+(kind==='idea'?'e.g. Move packing tape to each station':'e.g. Location C-12 label unreadable')+'"></textarea>'+
+      '<div class="row2"><button class="secondary" data-a="close">Cancel</button><button class="primary" data-a="savenote" data-v="'+kind+'">Save</button></div>');
+  },
+  savenote: function(kind){
+    var el = document.getElementById('m_text'); var txt = el ? el.value.trim() : '';
+    if(!txt){ closeModal(); return; }
+    var cur = runningEvent();
+    S.events.push({id:uid(), sid:S.active, type:kind, text:txt, ctx:cur?cur.label:'', start:pendingTs||Date.now()});
+    save(); closeModal(); render(); toast(kind==='idea'?'Idea saved':'Note saved');
+  },
+  custom: function(){
+    modalCls = 'W';
+    openModal('<h2>Other activity</h2>'+
+      '<label>Activity name<input type="text" id="m_label" placeholder="e.g. Rearrange pallet"></label>'+
+      '<label>Classification</label><div class="seg" id="m_cls">'+['VA','NNVA','W'].map(function(c){ return '<button data-a="mcls" data-v="'+c+'" class="'+(c===modalCls?'on':'')+'">'+CLS[c].short+'</button>'; }).join('')+'</div>'+
+      '<label id="m_wl">Waste type<select id="m_waste">'+WASTE.map(function(w){ return '<option>'+w+'</option>'; }).join('')+'</select></label>'+
+      '<p class="hint">It will also be available in future '+CATALOG[activeSession().process].label+' sessions.</p>'+
+      '<div class="row2"><button class="secondary" data-a="close">Cancel</button><button class="primary" data-a="savecustom">Save &amp; start</button></div>');
+  },
+  mcls: function(v){
+    modalCls = v;
+    var bs = document.querySelectorAll('#m_cls button');
+    for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-v')===v);
+    document.getElementById('m_wl').style.display = v==='W' ? '' : 'none';
+  },
+  savecustom: function(){
+    var s = activeSession(); var label = document.getElementById('m_label').value.trim();
+    if(!s || !label){ toast('Please enter a name'); return; }
+    var a = {id:'c_'+uid(), label:label, cls:modalCls, waste: modalCls==='W' ? document.getElementById('m_waste').value : ''};
+    S.custom[s.process] = (S.custom[s.process]||[]).concat([a]);
+    closeModal(); startActivity(a);
+  },
+  close: closeModal,
+  end: function(){
+    var s = activeSession(); if(!s) return;
+    if(!confirm('End this observation session?')) return;
+    closeRunning(Date.now()); s.end = Date.now(); S.active = null;
+    summaryScope = 's:'+s.id; tab = 'summary';
+    releaseWake(); save(); render(); window.scrollTo(0,0);
+    toast('Session saved. Remember to export.');
+  },
+  gosum: function(id){ summaryScope='s:'+id; tab='summary'; render(); window.scrollTo(0,0); },
+  log: function(id){ openLogs[id]=!openLogs[id]; render(); },
+  delev: function(id){
+    if(!confirm('Delete this entry?')) return;
+    if(S.running===id) S.running=null;
+    S.events = S.events.filter(function(e){ return e.id!==id; }); save(); render();
+  },
+  delsess: function(id){
+    if(!confirm('Delete this session and all its entries? This cannot be undone.')) return;
+    S.sessions = S.sessions.filter(function(s){ return s.id!==id; });
+    S.events = S.events.filter(function(e){ return e.sid!==id; });
+    if(S.active===id){ S.active=null; S.running=null; releaseWake(); }
+    save(); render();
+  },
+  delcustom: function(v){
+    var p = v.split('|')[0], id = v.split('|').slice(1).join('|');
+    S.custom[p] = (S.custom[p]||[]).filter(function(a){ return a.id!==id; }); save(); render();
+  },
+  exportall: function(){ exportCSV(S.sessions.map(function(s){return s.id;}), 'all'); },
+  exportscope: function(){
+    var sids = summaryScope.indexOf('p:')===0 ? S.sessions.filter(function(s){return s.process===summaryScope.slice(2);}).map(function(s){return s.id;}) : [summaryScope.slice(2)];
+    exportCSV(sids, summaryScope.indexOf('p:')===0 ? summaryScope.slice(2) : 'session');
+  },
+  backup: exportJSON,
+  wipe: function(){
+    if(!confirm('Delete ALL observation data on this device? Export first if you need it.')) return;
+    if(!confirm('Really delete everything?')) return;
+    var keepLast = S.last; S = blank(); S.last = keepLast; releaseWake(); save(); tab='observe'; render();
+  }
+};
+
+document.addEventListener('click', function(e){
+  if(e.target.id==='modal'){ closeModal(); return; }
+  var b = e.target.closest('[data-a]'); if(!b) return;
+  var fn = A[b.getAttribute('data-a')];
+  if(fn){ e.preventDefault(); fn(b.getAttribute('data-v'), b); }
+});
+document.addEventListener('change', function(e){
+  if(e.target.id==='scope'){ summaryScope = e.target.value; render(); }
+  if(e.target.id==='importFile'){ importFile(e.target.files[0]); e.target.value=''; }
+});
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape') closeModal();
+  if(e.key==='Enter' && e.target.id==='m_label'){ A.savecustom(); }
+});
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible'){ requestWake(); render(); } });
+
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function(){}); }catch(e){}
+
+if(S.active && !activeSession()){ S.active=null; S.running=null; }
+render();
+if(S.active) requestWake();
+})();
+</script>
+</body>
+</html>
