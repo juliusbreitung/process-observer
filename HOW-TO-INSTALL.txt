@@ -1,4 +1,4 @@
-PROCESS OBSERVATION APP – SETUP (v0.3.0)
+PROCESS OBSERVATION APP – SETUP (v0.7.1)
 
 1. Upload this whole folder to a static web host with HTTPS
    (e.g. Netlify: sign in, then drag the folder onto "Deploy manually";

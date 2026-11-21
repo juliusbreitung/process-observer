@@ -1,5 +1,5 @@
 /* Offline cache for Process Observation. Bump VERSION whenever any file changes. */
-const VERSION = '0.3.0';
+const VERSION = '0.7.1';
 const CACHE = 'procobs-' + VERSION;
 const ASSETS = ['./', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
